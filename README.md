@@ -1,5 +1,7 @@
 # Coverage Testing
-
+This is a Repository of neuron coverage testing for CNN, RNN, and DRL.
+So Far, the accomplishment subjects includes:
+ - CNN
 ## Project Architecture
     /coverage: the result of the generated result.
     /data: the dataset being used.
