@@ -75,7 +75,7 @@ class Coverage:
             factors[i] = (max_num - min_num, min_num)
         return factors
 
-    # 1 Neuron Coverage
+    # 1 neuron_coverage_cnn
     def NC(self, layers, threshold=0., batch=1024):
         factors = self.scale(layers, batch=batch)
         neuron_num = 0
