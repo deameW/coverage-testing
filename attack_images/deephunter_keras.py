@@ -1,31 +1,35 @@
-
+from mutators import Mutators
 import numpy as np
+import time
+import copy
+import matplotlib.pyplot as plt
+from keras import backend as K
+# import model
+from keras.models import load_model
+
 from keras import backend as K
 
-
+import tensorflow as tf
+import os
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 DATA_DIR = "../data/"
 MODEL_DIR = "../models/"
-RESULT_DIR = "../coverage/"
 
 
-MNIST = "mnist"
-CIFAR = "cifar"
-SVHN = "svhn"
+####for solving some specific problems, don't care
+config = tf.ConfigProto()
+config.gpu_options.allow_growth = True
+sess = tf.Session(config=config)
 
-DATASET_NAMES = [MNIST, CIFAR, SVHN]
+import argparse
+import os
+import random
+import shutil
+import warnings
+import sys
 
-BIM = "bim"
-CW = "cw"
-FGSM = "fgsm"
-JSMA = "jsma"
-PGD = "pgd"
-APGD = "apgd"
-DF = "deepfool"
-NF = "newtonfool"
-SA = "squareattack"
-ST = "spatialtransformation"
-ATTACK_NAMES = [APGD, BIM, CW, DF, FGSM, JSMA, NF, PGD, SA, ST]
+warnings.filterwarnings("ignore")
 
 # helper function
 def get_layer_i_output(model, i, data):
@@ -34,18 +38,6 @@ def get_layer_i_output(model, i, data):
     num = data.shape[0]
     ret = np.reshape(ret, (num, -1))
     return ret
-
-
-# the data is in range(-.5, .5)
-def load_data(dataset_name):
-    assert dataset_name in DATASET_NAMES
-    x_train = np.load(DATA_DIR + dataset_name + '/benign/x_train.npy')
-    y_train = np.load(DATA_DIR + dataset_name + '/benign/y_train.npy')
-    x_test = np.load(DATA_DIR + dataset_name + '/benign/x_test.npy')
-    y_test = np.load(DATA_DIR + dataset_name + '/benign/y_test.npy')
-    return x_train, y_train, x_test, y_test
-
-
 
 
 class Coverage:
@@ -75,10 +67,9 @@ class Coverage:
             factors[i] = (max_num - min_num, min_num)
         return factors
 
-    # 1 neuron_coverage_cnn
+    # 1 Neuron Coverage
     def NC(self, layers, threshold=0., batch=1024):
         factors = self.scale(layers, batch=batch)
-        # Calculate the total neuron number of all the layers
         neuron_num = 0
         for i in layers:
             out_shape = self.model.layers[i].output.shape
@@ -137,7 +128,7 @@ class Coverage:
             begin, end = 0, batch
             data_num = self.x_adv.shape[0]
             while begin < data_num:
-                layer_output_adv = get_layer_i_output(self.model, i, self.x_adv[begin: end])
+                layer_output_adv = get_layer_i_output(model, i, self.x_adv[begin: end])
                 layer_output_adv -= neuron_min
                 layer_output_adv /= (interval + 10 ** (-100))
                 layer_output_adv[layer_output_adv < 0.] = -1
@@ -235,3 +226,137 @@ class Coverage:
         self.KMNC(layers, batch=batch)
         self.TKNC(layers, batch=batch)
         self.TKNP(layers, batch=batch)
+
+
+def mutate(img, dataset):
+    # ref_img is the reference image, img is the seed
+
+    # cl means the current state of transformation
+    # 0 means it can select both of Affine and Pixel transformations
+    # 1 means it only select pixel transformation because an Affine transformation has been used before
+
+    # l0_ref, linf_ref: if the current seed is mutated from affine transformation, we will record the l0, l_inf
+    # between initial image and the reference image. i.e., L0(s_0,s_{j-1}) L_inf(s_0,s_{j-1}) in Equation 2 of the paper
+
+    # tyr_num is the maximum number of trials in Algorithm 2
+
+    transformations = [Mutators.image_translation, Mutators.image_scale, Mutators.image_shear, Mutators.image_rotation,
+                       Mutators.image_contrast, Mutators.image_brightness, Mutators.image_blur,
+                       Mutators.image_pixel_change,
+                       Mutators.image_noise]
+
+    # these parameters need to be carefullly considered in the experiment
+    # to consider the feedbacks
+    params = []
+    params.append(list(range(-3, 3)))  # image_translation
+    params.append(list(map(lambda x: x * 0.1, list(range(7, 12)))))  # image_scale
+    params.append(list(map(lambda x: x * 0.1, list(range(-6, 6)))))  # image_shear
+    params.append(list(range(-50, 50)))  # image_rotation
+    params.append(list(map(lambda x: x * 0.1, list(range(5, 13)))))  # image_contrast
+    params.append(list(range(-20, 20)))  # image_brightness
+    params.append(list(range(1, 10)))  # image_blur
+    params.append(list(range(1, 10)))  # image_pixel_change
+    params.append(list(range(1, 4)))  # image_noise
+
+    classA = [7, 8]  # pixel value transformation
+    classB = [0, 1, 2, 3, 4, 5, 6]  # Affine transformation
+
+
+    x, y, z = img.shape
+    random.seed(time.time())
+
+    tid = random.sample(classA + classB, 1)[0]
+    # tid = 1
+    # Randomly select one transformation   Line-7 in Algorithm2
+    transformation = transformations[tid]
+    params = params[tid]
+    # Randomly select one parameter Line 10 in Algo2
+    param = random.sample(params, 1)[0]
+
+    # Perform the transformation  Line 11 in Algo2
+
+    # plt.imshow(img + 0.5)
+    # plt.show()
+    if dataset == 'cifar:
+        # # for cifar dataset
+        img_new = transformation(img, param)
+        # img_new = np.round(img_new)
+        img_new = img_new.reshape(img.shape)
+    else:
+        image = np.uint8(np.round((img + 0.5) * 255))
+        img_new = transformation(copy.deepcopy(image), param)/ 255.0 - 0.5
+        # img_new = np.round(img_new)
+        img_new = img_new.reshape(img.shape)
+
+    # Otherwise the mutation is failed. Line 20 in Algo 2
+    return img_new
+
+# the data is in range(-.5, .5)
+def load_data(dataset_name):
+    assert (dataset_name.upper() in ['MNIST', 'CIFAR', 'SVHN'])
+    dataset_name = dataset_name.lower()
+    x_train = np.load(DATA_DIR + dataset_name + '/benign/x_train.npy')
+    y_train = np.load(DATA_DIR + dataset_name + '/benign/y_train.npy')
+    x_test = np.load(DATA_DIR + dataset_name + '/benign/x_test.npy')
+    y_test = np.load(DATA_DIR + dataset_name + '/benign/y_test.npy')
+    return x_train, y_train, x_test, y_test
+
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Deephunter for DNN')
+    parser.add_argument('-dataset', help="dataset to use", choices=['mnist', 'cifar, 'svhn'])
+    parser.add_argument('-model', help="target model to attack", choices=['vgg16', 'resnet20', 'lenet1', 'lenet4', 'lenet5', 'svhn_model', 'svhn_second', 'svhn_first'])
+
+    args = parser.parse_args()
+
+    dataset_name = "mnist"
+    model_name = "lenet1"
+    
+    datasets = ['mnist', 'cifar, 'svhn']
+    model_dict = {
+        'mnist': ['lenet1', 'lenet4', 'lenet5'],
+        'cifar: ['vgg16', 'resnet20'],
+        'svhn': ['svhn_model', 'svhn_first', 'svhn_second']
+    }
+    
+    attack_name = "DeepHunter"
+
+    for dataset_name in datasets:
+        if dataset_name in model_dict :
+            for model_name in model_dict[dataset_name]:
+
+                # load dataset
+                x_train, y_train, x_test, y_test = load_data(dataset_name)
+
+                model_path = "{}{}/{}.h5".format(MODEL_DIR, dataset_name, model_name)
+                model = load_model(model_path)
+                model.summary()
+
+                x_adv = np.array([])
+                for i in range(1000):
+                    new_image = mutate(x_test[i], dataset_name)
+
+                    if x_adv.size == 0:
+                        x_adv = np.expand_dims(new_image, axis=0)
+                    else:
+                        x_adv = np.concatenate((x_adv, np.expand_dims(new_image, axis=0)), axis=0)
+
+                adv_dir = "{}{}/adv/{}/".format(DATA_DIR, dataset_name, model_name)
+                if not os.path.exists(adv_dir):
+                    os.makedirs(adv_dir)
+                adv_path = "{}{}.npy".format(adv_dir, attack_name)
+                np.save(adv_path, x_adv)
+
+
+
+
+
+
+
+
+
+
+
+
+

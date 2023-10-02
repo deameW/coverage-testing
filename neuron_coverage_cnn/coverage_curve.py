@@ -66,7 +66,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--dataset', help="Model Architecture", type=str, default="mnist")
     parser.add_argument(
-        '--model', help="Model Architecture", type=str, default="lenet1")
+        '--model', help="Model Architecture", type=str, default="lenet5")
     parser.add_argument(
         '--attack', help="Adversarial examples", type=str, default="fgsm")
     

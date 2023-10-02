@@ -110,7 +110,7 @@ demo/pics/*
 .idea/
 
 
-Comparison of Attack Images/data/*
+attack_images/data/*
 data/*
 
 Model Accuracy under Different Scenarios/data/*
