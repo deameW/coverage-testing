@@ -64,9 +64,9 @@ if __name__ == '__main__':
     
     parser = argparse.ArgumentParser(description='Attack for CNN')
     parser.add_argument(
-        '--dataset', help="Model Architecture", type=str, default="mnist")
+        '--dataset', help="Model Architecture", type=str, default="cifar")
     parser.add_argument(
-        '--model', help="Model Architecture", type=str, default="lenet5")
+        '--model', help="Model Architecture", type=str, default="vgg16")
     parser.add_argument(
         '--attack', help="Adversarial examples", type=str, default="fgsm")
     
@@ -120,44 +120,43 @@ if __name__ == '__main__':
 
     cov_result_path = os.path.join(cov_dir, "coverage_result_bak.txt")
     with open(cov_result_path, "w+") as f:
-        for i in range(1, len(x_adv), 200):
-            if i == 1000 or i == 3000 or i == 5000 or i == 7000 or i == 9000:
-                print(i)
+        # for i in range(1, len(x_adv), 200):
 
-            coverage = Coverage(model, x_train, y_train, x_test, y_test, x_adv[:i])
-            nc1, _, _ = coverage.NC(l, threshold=0.3)
-            nc2, _, _ = coverage.NC(l, threshold=0.5)
-            kmnc, nbc, snac, _, _, _, _ = coverage.KMNC(l)
-            tknc, _, _ = coverage.TKNC(l)
-            tknp = coverage.TKNP(l)
+        # 计算前200个覆盖率，前400个覆盖率，前1000个覆盖率
+        coverage = Coverage(model, x_train, y_train, x_test, y_test, x_adv)
+        nc1, _, _ = coverage.NC(l, threshold=0.3)
+        nc2, _, _ = coverage.NC(l, threshold=0.5)
+        kmnc, nbc, snac, _, _, _, _ = coverage.KMNC(l)
+        tknc, _, _ = coverage.TKNC(l)
+        tknp = coverage.TKNP(l)
 
-            f.write("\n------------------------------------------------------------------------------\n")
-            f.write('x: {}   \n'.format(i))
-            f.write('NC(0.1): {}   \n'.format(nc1))
-            f.write('NC(0.3): {}   \n'.format(nc2))
-            f.write('TKNC: {}   \n'.format(tknc))
-            f.write('TKNP: {} \n'.format(tknp))
-            f.write('KMNC: {} \n'.format(kmnc))
-            f.write('NBC: {}  \n'.format(nbc))
-            f.write('SNAC: {} \n'.format(snac))
+        # f.write("\n------------------------------------------------------------------------------\n")
+        # f.write('x: {}   \n'.format(i))
+        f.write('NC(0.1): {}   \n'.format(nc1))
+        f.write('NC(0.3): {}   \n'.format(nc2))
+        f.write('TKNC: {}   \n'.format(tknc))
+        f.write('TKNP: {} \n'.format(tknp))
+        f.write('KMNC: {} \n'.format(kmnc))
+        f.write('NBC: {}  \n'.format(nbc))
+        f.write('SNAC: {} \n'.format(snac))
 
-            xlabel.append(i)
-            cov_nc1.append(nc1)
-            cov_nc2.append(nc2)
-            cov_kmnc.append(kmnc)
-            cov_nbc.append(nbc)
-            cov_snac.append(snac)
-            cov_tknc.append(tknc)
-            cov_tknp.append(tknp)
+        # xlabel.append(i)
+        cov_nc1.append(nc1)
+        cov_nc2.append(nc2)
+        cov_kmnc.append(kmnc)
+        cov_nbc.append(nbc)
+        cov_snac.append(snac)
+        cov_tknc.append(tknc)
+        cov_tknp.append(tknp)
 
-        np.save(os.path.join(cov_dir, 'xlabel.npy'), xlabel)
-        np.save(os.path.join(cov_dir, 'cov_nc1.npy'), cov_nc1)
-        np.save(os.path.join(cov_dir, 'cov_nc2.npy'), cov_nc2)
-        np.save(os.path.join(cov_dir, 'cov_kmnc.npy'), cov_kmnc)
-        np.save(os.path.join(cov_dir, 'cov_nbc.npy'), cov_nbc)
-        np.save(os.path.join(cov_dir, 'cov_snac.npy'), cov_snac)
-        np.save(os.path.join(cov_dir, 'cov_tknc.npy'), cov_tknc)
-        np.save(os.path.join(cov_dir, 'cov_tknp.npy'), cov_tknp)
+    np.save(os.path.join(cov_dir, 'xlabel.npy'), xlabel)
+    np.save(os.path.join(cov_dir, 'cov_nc1.npy'), cov_nc1)
+    np.save(os.path.join(cov_dir, 'cov_nc2.npy'), cov_nc2)
+    np.save(os.path.join(cov_dir, 'cov_kmnc.npy'), cov_kmnc)
+    np.save(os.path.join(cov_dir, 'cov_nbc.npy'), cov_nbc)
+    np.save(os.path.join(cov_dir, 'cov_snac.npy'), cov_snac)
+    np.save(os.path.join(cov_dir, 'cov_tknc.npy'), cov_tknc)
+    np.save(os.path.join(cov_dir, 'cov_tknp.npy'), cov_tknp)
 
 
 
