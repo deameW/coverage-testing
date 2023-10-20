@@ -51,9 +51,9 @@ class NCTestObjectiveEvaluation:
         
     def displayCoverage(self):
         cov_result_path = os.path.join("./testRNN_output", "coverage_result_text.txt")
-        with open(cov_result_path, "w+") as f:
+        with open(cov_result_path, "a+") as f:
             if self.testObjective.threshold == 0:
-                with open(cov_result_path, "w+") as f:
+                with open(cov_result_path, "a+") as f:
                     print("neuron coverage up to now: %.2f\n"%(self.coverage))
                     f.write('NC: {}   \n'.format(self.coverage))
             else:
@@ -116,7 +116,7 @@ class KMNCTestObjectiveEvaluation:
 
     def displayCoverage(self):
         cov_result_path = os.path.join("./testRNN_output", "coverage_result_text.txt")
-        with open(cov_result_path, "w+") as f:
+        with open(cov_result_path, "a+") as f:
             print("KMNC up to now: %.2f\n" % (self.coverage))
             f.write('KMNC: {}   \n'.format(self.coverage))
         f.close()
@@ -185,7 +185,7 @@ class NBCTestObjectiveEvaluation:
 
     def displayCoverage(self):
         cov_result_path = os.path.join("./testRNN_output", "coverage_result_text.txt")
-        with open(cov_result_path, "w+") as f:
+        with open(cov_result_path, "a+") as f:
             f.write('NBC: {}   \n'.format(self.coverage))
         f.close()
         print("NBC up to now: %.2f\n" % (self.coverage))
@@ -271,7 +271,7 @@ class SCTestObjectiveEvaluation:
 
     def displayCoverage(self):
         cov_result_path = os.path.join("./testRNN_output", "coverage_result_text.txt")
-        with open(cov_result_path, "w+") as f:
+        with open(cov_result_path, "a+") as f:
             f.write('SSC: {}   \n'.format(self.coverage))
         f.close()
         print("SSC up to now: %.2f\n" % (self.coverage))

@@ -43,7 +43,7 @@ def sentimentGenerateTestSuite(r,threshold_SC,threshold_BC,symbols_TC,seq,TestCa
         for i in range(100, 200):
             X_seeds.append(x_class[i])
     # X_seeds = sm.X_train[sm.y_train == 0]
-    # X_seeds = X_seeds[:100]
+    X_seeds = X_seeds[:100]
 
     # predict sentiment from reviews
     review = "really good film to watch and highly recommended"
@@ -94,13 +94,13 @@ def sentimentGenerateTestSuite(r,threshold_SC,threshold_BC,symbols_TC,seq,TestCa
     TCtoe.testObjective.setParamters(sm.model, TC_test_obj, layer, int(symbols_TC), seq_len, indices, mean_TC, std_TC)
 
     # visualize internal structure information
-    # act_TC = np.squeeze(act_TC)[-8:]
-    # act_SC = np.squeeze(act_SC)[-8:]
-    # act_TC = Z_ScoreNormalization(act_TC, mean_TC, std_TC)
-    # act_BC = np.sum(f_t, axis=1) / float(f_t.shape[1])
-    # act_BC = act_BC[-8:]
-    # act_SC = (act_SC - min_SC) / (max_SC - min_SC)
-    #
+    act_TC = np.squeeze(act_TC)[-8:]
+    act_SC = np.squeeze(act_SC)[-8:]
+    act_TC = Z_ScoreNormalization(act_TC, mean_TC, std_TC)
+    act_BC = np.sum(f_t, axis=1) / float(f_t.shape[1])
+    act_BC = act_BC[-8:]
+    act_SC = (act_SC - min_SC) / (max_SC - min_SC)
+
     # plt.figure(1)
     # plot_x = np.arange(len(act_TC))
     # plt.plot(plot_x, act_TC)
@@ -173,6 +173,45 @@ def sentimentGenerateTestSuite(r,threshold_SC,threshold_BC,symbols_TC,seq,TestCa
         TCtoe.update_features(h_test, len(X_test))
 
         X_test = X_test + test2.tolist()
+
+        # record the coverages of oringin dataset
+        # nc_test_record = nctoe.testObjective.coverage
+        # nc_feature, nc_cov_fit = random.choice(list(nc_test_record.items()))
+        # seed_id_nc = nc_cov_fit[0] % len(X_seeds)
+        # nc_test_1 = y_seeds[seed_id_nc]
+        nc_test_1 = 0
+
+        # kmnc_test_record = kmnctoe.testObjective.test_record
+        # nc_feature, kmnc_cov_fit = random.choice(list(kmnc_test_record.items()))
+        # seed_id_kmnc = kmnc_cov_fit[0] % len(X_seeds)
+        # kmnc_test_1 = y_seeds[seed_id_kmnc]
+        kmnc_test_1=0
+
+        nbc_test_record = nbctoe.testObjective.test_record
+        nbc_feature, nbc_cov_fit = random.choice(list(nbc_test_record.items()))
+        seed_id_nbc = nbc_cov_fit[0] % len(X_seeds)
+        nbc_test_1 = y_seeds[seed_id_nbc]
+
+        snac_test_record = snactoe.testObjective.test_record
+        snac_feature, snac_cov_fit = random.choice(list(snac_test_record.items()))
+        seed_id_snac = snac_cov_fit[0] % len(X_seeds)
+        snac_test_1 = y_seeds[seed_id_snac]
+
+        sc_test_record = SCtoe.testObjective.test_record
+        sc_feature, sc_cov_fit = random.choice(list(sc_test_record.items()))
+        seed_id_sc = sc_cov_fit[0] % len(X_seeds)
+        sc_test_1 = y_seeds[seed_id_sc]
+
+        cov_result_path = os.path.join("./testRNN_output", "coverage_result_text.txt")
+        with open(cov_result_path, "w+") as f:
+            f.write('------------------------------------------------------------------------------\n')
+            f.write('NC: {}   \n'.format(nc_test_1))
+            f.write('KMNC: {}   \n'.format(kmnc_test_1))
+            f.write('NBC: {}   \n'.format(nbc_test_1))
+            f.write('SNAC: {}   \n'.format(snac_test_1))
+            f.write('SSC: {}   \n'.format(sc_test_1))
+        f.close()
+
 
         if Mutation == 'genetic':
             num_generation = 10
