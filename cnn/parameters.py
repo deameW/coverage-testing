@@ -1,7 +1,7 @@
 import tensorflow as tf
 ### Path parameters
-DATA_DIR = "../data/"
-MODEL_DIR = "../models/"
+DATA_DIR = "data/"
+MODEL_DIR = "models/"
 
 ### DATASET NAMES
 MNIST = "mnist"

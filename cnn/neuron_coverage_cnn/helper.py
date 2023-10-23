@@ -12,8 +12,9 @@ RESULT_DIR = "../coverage/"
 MNIST = "mnist"
 CIFAR = "cifar"
 SVHN = "svhn"
+JS = "js"
 
-DATASET_NAMES = [MNIST, CIFAR, SVHN]
+DATASET_NAMES = [MNIST, CIFAR, SVHN, JS]
 
 BIM = "bim"
 CW = "cw"
@@ -30,6 +31,7 @@ ATTACK_NAMES = [APGD, BIM, CW, DF, FGSM, JSMA, NF, PGD, SA, ST]
 # helper function
 def get_layer_i_output(model, i, data):
     layer_model = K.function([model.layers[0].input], [model.layers[i].output])
+    tmp=layer_model([data])
     ret = layer_model([data])[0]
     num = data.shape[0]
     ret = np.reshape(ret, (num, -1))
@@ -39,10 +41,10 @@ def get_layer_i_output(model, i, data):
 # the data is in range(-.5, .5)
 def load_data(dataset_name):
     assert dataset_name in DATASET_NAMES
-    x_train = np.load(DATA_DIR + dataset_name + '/benign/x_train.npy')
-    y_train = np.load(DATA_DIR + dataset_name + '/benign/y_train.npy')
-    x_test = np.load(DATA_DIR + dataset_name + '/benign/x_test.npy')
-    y_test = np.load(DATA_DIR + dataset_name + '/benign/y_test.npy')
+    x_train = np.load(DATA_DIR + dataset_name + '/benign/x_train.npy', allow_pickle=True)
+    y_train = np.load(DATA_DIR + dataset_name + '/benign/y_train.npy',allow_pickle=True)
+    x_test = np.load(DATA_DIR + dataset_name + '/benign/x_test.npy',allow_pickle=True)
+    y_test = np.load(DATA_DIR + dataset_name + '/benign/y_test.npy',allow_pickle=True)
     return x_train, y_train, x_test, y_test
 
 

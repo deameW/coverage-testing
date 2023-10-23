@@ -12,6 +12,9 @@ import pytz
 import numpy as np
 
 import warnings
+
+from PIL import Image
+
 warnings.filterwarnings("ignore", message=r"Passing", category=FutureWarning)
 
 import tensorflow.keras as keras
@@ -69,8 +72,9 @@ MODEL_DIR = "../models/"
 MNIST = "mnist"
 CIFAR = "cifar"
 SVHN = "svhn"
+JS = "js"
 
-DATASET_NAMES = [MNIST, CIFAR, SVHN]
+DATASET_NAMES = [MNIST, CIFAR, SVHN, JS]
 
 BIM = "bim"
 CW = "cw"
@@ -115,6 +119,9 @@ classifier_params[CIFAR]["input_shape"] = (32, 32, 3)
 classifier_params[SVHN]["nb_classes"] = 10
 classifier_params[SVHN]["input_shape"] = (32, 32, 3)
 classifier_params[SVHN]["clip_values"] = (-0.5, 0.5)
+
+classifier_params[JS]["nb_classes"] = 6
+classifier_params[JS]["input_shape"] = (128, 128, 3)
 
 
 
@@ -180,6 +187,12 @@ attack_params[PGD][SVHN] = {'eps': 8. / 255.,
                       'max_iter': 30
                       }
 
+attack_params[PGD][JS] = {'eps': 16. / 255.,
+                      'eps_step': 2. / 255.,
+                      'max_iter': 30
+                      }
+
+
 # use the same epsilon used in pgd
 attack_params[BIM] = {}
 attack_params[BIM][MNIST] = {'eps': .3
@@ -188,6 +201,8 @@ attack_params[BIM][CIFAR] = {'eps': 16. / 255.
                                   }
 attack_params[BIM][SVHN] = {'eps': 8. / 255.
                                  }
+attack_params[BIM][JS] = {'eps': 16. / 255.
+                                  }
 
 
 # use the same epsilon used in pgd
@@ -198,6 +213,8 @@ attack_params[FGSM][CIFAR] = {'eps': 16. / 255.
                                  }
 attack_params[FGSM][SVHN] = {'eps': 8. / 255.
                                 }
+attack_params[FGSM][JS] = {'eps': 16. / 255.
+                                 }
 
 
 
@@ -253,7 +270,49 @@ def load_data(dataset_name):
     y_train = np.load(DATA_DIR + dataset_name + '/benign/y_train.npy',allow_pickle=True,fix_imports=True,encoding='latin1')
     x_test = np.load(DATA_DIR + dataset_name + '/benign/x_test.npy',allow_pickle=True,fix_imports=True,encoding='latin1')
     y_test = np.load(DATA_DIR + dataset_name + '/benign/y_test.npy',allow_pickle=True,fix_imports=True,encoding='latin1')
-    return x_train, y_train, x_test, y_test
+
+    # 创建一个空列表来存储调整大小后的图像
+    x_train_resized = []
+
+    # 指定新的高度和宽度
+    new_height = 128
+    new_width = 128
+
+    # 遍历 x_train 中的每个图像
+    for image in x_train:
+        # 创建一个 Pillow 图像对象
+        pil_image = Image.fromarray(image)
+
+        # 调整图像大小
+        pil_image = pil_image.resize((new_width, new_height))
+
+        # 将 Pillow 图像对象转换为 NumPy 数组
+        resized_image = np.array(pil_image)
+
+        # 将调整大小后的图像添加到列表
+        x_train_resized.append(resized_image)
+
+    # 将列表转换为 NumPy 数组
+    x_train_resized = np.array(x_train_resized)
+
+    x_test_resized = []
+    for image in x_test:
+        # 创建一个 Pillow 图像对象
+        pil_image = Image.fromarray(image)
+
+        # 调整图像大小
+        pil_image = pil_image.resize((new_width, new_height))
+
+        # 将 Pillow 图像对象转换为 NumPy 数组
+        resized_image = np.array(pil_image)
+
+        # 将调整大小后的图像添加到列表
+        x_test_resized.append(resized_image)
+
+    # 将列表转换为 NumPy 数组
+    x_test_resized = np.array(x_test_resized)
+
+    return x_train_resized, y_train, x_test_resized, y_test
 
 
 def softmax(x):
@@ -274,11 +333,11 @@ def accuracy(model, x, labels):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Attack for DNN')
     parser.add_argument(
-        '--dataset', help="Model Architecture", type=str, default="mnist")
+        '--dataset', help="Model Architecture", type=str, default="js")
     parser.add_argument(
-        '--model', help="Model Architecture", type=str, default="lenet1")
+        '--model', help="Model Architecture", type=str, default="lenet5_js")
     parser.add_argument(
-        '--attack', help="Adversarial examples", type=str, default="fgsm")
+        '--attack', help="Adversarial examples", type=str, default="cw")
     parser.add_argument(
         '--batch_size', help="batch size for generating adversarial examples", type=int, default=1024)
 

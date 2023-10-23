@@ -20,6 +20,7 @@ from PIL import Image, ImageFilter
 from skimage.measure import compare_ssim as SSIM
 import keras
 from keras.models import load_model
+from tensorflow import keras
 from helper import load_data
 from helper import Coverage
 import tensorflow as tf
@@ -45,8 +46,9 @@ RESULT_DIR = "../coverage/"
 MNIST = "mnist"
 CIFAR = "cifar"
 SVHN = "svhn"
+JS = "js"
 
-DATASET_NAMES = [MNIST, CIFAR, SVHN]
+DATASET_NAMES = [MNIST, CIFAR, SVHN, JS]
 
 BIM = "bim"
 CW = "cw"
@@ -98,16 +100,68 @@ if __name__ == '__main__':
     ## Load benign images from mnist, cifar, or svhn
     x_train, y_train, x_test, y_test = load_data(dataset_name)
 
+    if dataset_name == 'js':
+        # 指定新的高度和宽度
+        new_height = 128
+        new_width = 128
+
+        # resize x_train
+        x_train_resized = []
+        # 遍历 x_train 中的每个图像
+        for image in x_train:
+            # 创建一个 Pillow 图像对象
+            pil_image = Image.fromarray(image)
+
+            # 调整图像大小
+            pil_image = pil_image.resize((new_width, new_height))
+
+            # 将 Pillow 图像对象转换为 NumPy 数组
+            resized_image = np.array(pil_image)
+
+            # 将调整大小后的图像添加到列表
+            x_train_resized.append(resized_image)
+
+        # 将列表转换为 NumPy 数组
+        x_train_resized = np.array(x_train_resized)
+
+        # 数据预处理
+        x_train_resized = x_train_resized / 255.0  # 归一化，将像素值缩放到 [0, 1]
+        x_train = x_train_resized
+
+        # resize x_test
+        x_test_resized = []
+        # 遍历 x_train 中的每个图像
+        for image in x_test:
+            # 创建一个 Pillow 图像对象
+            pil_image = Image.fromarray(image)
+
+            # 调整图像大小
+            pil_image = pil_image.resize((new_width, new_height))
+
+            # 将 Pillow 图像对象转换为 NumPy 数组
+            resized_image = np.array(pil_image)
+
+            # 将调整大小后的图像添加到列表
+            x_test_resized.append(resized_image)
+
+        # 将列表转换为 NumPy 数组
+        x_test_resized = np.array(x_test_resized)
+
+        # 数据预处理
+        x_test_resized = x_test_resized / 255.0  # 归一化，将像素值缩放到 [0, 1]
+        x_train = x_test_resized
+
+
     ## Load keras pretrained model for the specific dataset
     model_path = "{}{}/{}.h5".format(MODEL_DIR,
                                     dataset_name, model_name)
-    model = load_model(model_path)
+    model = keras.models.load_model(model_path)
     model.summary()
 
     x_adv_path = "{}x_test.npy".format(adv_dir)
     x_adv = np.load(x_adv_path)
 
-    l = [0, 8]
+    l = [0, 5]
 
     xlabel = []
     cov_nc1 = []
@@ -118,7 +172,7 @@ if __name__ == '__main__':
     cov_tknc = []
     cov_tknp = []
 
-    cov_result_path = os.path.join(cov_dir, "coverage_result_bak.txt")
+    cov_result_path = os.path.join("./", "coverage_result_bak.txt")
     with open(cov_result_path, "w+") as f:
         for i in range(1, len(x_adv), 200):
             if i == 1000 or i == 3000 or i == 5000 or i == 7000 or i == 9000:
