@@ -13,21 +13,20 @@ import numpy as np
 
 import warnings
 
-# from neuron_coverage_cnn.train_models import ModelTrainer
-
 warnings.filterwarnings("ignore", message=r"Passing", category=FutureWarning)
-
 
 import numpy as np
 from PIL import Image, ImageFilter
 # from skimage.measure import compare_ssim as SSIM
-import keras
-from keras.models import load_model
+# import keras
 from tensorflow import keras
+# from keras.models import load_model
 from helper import load_data
 from helper import Coverage
 import tensorflow as tf
 import os
+import robust_function
+
 
 ## custom time zone for logger
 def customTime(*args):
@@ -35,8 +34,8 @@ def customTime(*args):
     converted = utc_dt.astimezone(pytz.timezone("Singapore"))
     return converted.timetuple()
 
-logging.Formatter.converter = customTime
 
+logging.Formatter.converter = customTime
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
@@ -65,19 +64,51 @@ SA = "squareattack"
 ST = "spatialtransformation"
 ATTACK_NAMES = [APGD, BIM, CW, DF, FGSM, JSMA, NF, PGD, SA, ST]
 
+
+def reshapeDataset(x_train):
+    # 指定新的高度和宽度
+    new_height = 128
+    new_width = 128
+
+    # resize x_test
+    x_test_resized = []
+    # 遍历 x_train 中的每个图像
+    for image in x_test:
+        # 创建一个 Pillow 图像对象
+        pil_image = Image.fromarray(image)
+
+        # 调整图像大小
+        pil_image = pil_image.resize((new_width, new_height))
+
+        # 将 Pillow 图像对象转换为 NumPy 数组
+        resized_image = np.array(pil_image)
+
+        # 将调整大小后的图像添加到列表
+        x_test_resized.append(resized_image)
+
+    # 将列表转换为 NumPy 数组
+    x_test_resized = np.array(x_test_resized)
+
+    # 数据预处理
+    x_test_resized = x_test_resized / 255.0  # 归一化，将像素值缩放到 [0, 1]
+    x_train = x_test_resized
+    return x_train
+
+
 if __name__ == '__main__':
-    
+
     parser = argparse.ArgumentParser(description='Attack for CNN')
     parser.add_argument(
         # '--dataset', help="Model Architecture", type=str, default="mnist")
-        '--dataset', help="Model Architecture", type=str, default="js")
-        # '--dataset', help="Model Architecture", type=str, default="mnist")
-        # '--dataset', help="Model Architecture", type=str, default="mnist")
+        '--dataset', help="Model Architecture", type=str, default="mnist")
     parser.add_argument(
         '--model', help="Model Architecture", type=str, default="lenet5")
+        # '--model', help="Model Architecture", type=str, default="lenet5")
+    # '--model', help="Model Architecture", type=str, default="lenet5")
+    # '--model', help="Model Architecture", type=str, default="lenet5")
     parser.add_argument(
         '--attack', help="Adversarial examples", type=str, default="fgsm")
-    
+
     args = parser.parse_args()
 
     dataset_name = args.dataset
@@ -89,86 +120,41 @@ if __name__ == '__main__':
         DATA_DIR, dataset_name, model_name, attack_name)
     cov_dir = "{}{}/adv/{}/{}/".format(
         RESULT_DIR, dataset_name, model_name, attack_name)
-    
-    if not os.path.exists(cov_dir):
-            os.makedirs(cov_dir)
-
-    logging.basicConfig(
-        format='[%(asctime)s] - %(message)s',
-        datefmt='%Y/%m/%d %H:%M:%S',
-        level=logging.INFO,
-        handlers=[
-            logging.FileHandler(
-                os.path.join(cov_dir, 'output.log')),
-            logging.StreamHandler()
-        ])
 
     ## Load benign images from mnist, cifar, or svhn
     x_train, y_train, x_test, y_test = load_data(dataset_name)
-
-
-    if dataset_name == 'js':
-        # 指定新的高度和宽度
-        new_height = 128
-        new_width = 128
-
-        # resize x_train
-        x_train_resized = []
-        # 遍历 x_train 中的每个图像
-        for image in x_train:
-            # 创建一个 Pillow 图像对象
-            pil_image = Image.fromarray(image)
-
-            # 调整图像大小
-            pil_image = pil_image.resize((new_width, new_height))
-
-            # 将 Pillow 图像对象转换为 NumPy 数组
-            resized_image = np.array(pil_image)
-
-            # 将调整大小后的图像添加到列表
-            x_train_resized.append(resized_image)
-
-        # 将列表转换为 NumPy 数组
-        x_train_resized = np.array(x_train_resized)
-
-        # 数据预处理
-        x_train_resized = x_train_resized / 255.0  # 归一化，将像素值缩放到 [0, 1]
-        x_train = x_train_resized
-
-        # resize x_test
-        x_test_resized = []
-        # 遍历 x_train 中的每个图像
-        for image in x_test:
-            # 创建一个 Pillow 图像对象
-            pil_image = Image.fromarray(image)
-
-            # 调整图像大小
-            pil_image = pil_image.resize((new_width, new_height))
-
-            # 将 Pillow 图像对象转换为 NumPy 数组
-            resized_image = np.array(pil_image)
-
-            # 将调整大小后的图像添加到列表
-            x_test_resized.append(resized_image)
-
-        # 将列表转换为 NumPy 数组
-        x_test_resized = np.array(x_test_resized)
-
-        # 数据预处理
-        x_test_resized = x_test_resized / 255.0  # 归一化，将像素值缩放到 [0, 1]
-        x_train = x_test_resized
-
-
-    ## Load keras pretrained model for the specific dataset
-    model_path = "{}{}/{}.h5".format(MODEL_DIR,
-                                    dataset_name, model_name)
-    model = keras.models.load_model(model_path)
-    model.summary()
-
     x_adv_path = "{}x_test.npy".format(adv_dir)
     x_adv = np.load(x_adv_path)
 
-    l = [0, 5]
+    if dataset_name == "js":
+        x_train = reshapeDataset(x_train)
+        x_test = reshapeDataset(x_test)
+        # x_adv = reshapeDataset(x_adv)
+    ## Load keras pretrained model for the specific dataset
+    model_path = "{}{}/{}.h5".format(MODEL_DIR,
+                                     dataset_name, model_name)
+    model = tf.keras.models.load_model(model_path)
+    model.summary()
+    # prepare datasets
+
+    # 创建一个新模型，以倒数第二层的输出为输出
+    second_model = tf.keras.Model(inputs=model.input, outputs=model.layers[-2].output)
+    k = 10
+    # for data in (x_train, covered_data_test_tknp, covered_data_test_nc):
+    # for data in (x_test, x_train):
+    for data in (x_test, x_adv):
+        prediction1, prediction2 = robust_function.GetModelOutput(model, second_model, data)
+        print(prediction1.shape)
+        print(prediction2.shape)
+        output = np.argmax(prediction1, axis=1)
+        FSA, FSD, DSF = robust_function.DSFCompute(prediction2, output, k)
+        print("FSA = " + str(FSA))
+        print("FSD = " + str(FSD))
+        print("DSF = " + str(DSF))
+
+    quit()
+
+    l = [0, 8]
 
     xlabel = []
     cov_nc1 = []
@@ -179,7 +165,9 @@ if __name__ == '__main__':
     cov_tknc = []
     cov_tknp = []
 
-    cov_result_path = os.path.join("./", "coverage_result_bak.txt")
+    cov_result_path = os.path.join(cov_dir, "coverage_result_bak.txt")
+
+
     with open(cov_result_path, "w+") as f:
         for i in range(1, len(x_adv), 200):
             if i == 1000 or i == 3000 or i == 5000 or i == 7000 or i == 9000:
@@ -191,10 +179,6 @@ if __name__ == '__main__':
             kmnc, nbc, snac, _, _, _, _ = coverage.KMNC(l)
             tknc, _, _ = coverage.TKNC(l)
             tknp = coverage.TKNP(l)
-            # gd = coverage.GD(l, 1024)
-            # ncd = coverage.NCD()
-            # std = coverage.STD()
-
 
             f.write("\n------------------------------------------------------------------------------\n")
             f.write('x: {}   \n'.format(i))
@@ -205,7 +189,6 @@ if __name__ == '__main__':
             f.write('KMNC: {} \n'.format(kmnc))
             f.write('NBC: {}  \n'.format(nbc))
             f.write('SNAC: {} \n'.format(snac))
-            # f.write('GD: {} \n'.format(gd))
 
             xlabel.append(i)
             cov_nc1.append(nc1)
@@ -216,14 +199,11 @@ if __name__ == '__main__':
             cov_tknc.append(tknc)
             cov_tknp.append(tknp)
 
-        np.save(os.path.join(cov_dir, 'xlabel.npy'), xlabel)
-        np.save(os.path.join(cov_dir, 'cov_nc1.npy'), cov_nc1)
-        np.save(os.path.join(cov_dir, 'cov_nc2.npy'), cov_nc2)
-        np.save(os.path.join(cov_dir, 'cov_kmnc.npy'), cov_kmnc)
-        np.save(os.path.join(cov_dir, 'cov_nbc.npy'), cov_nbc)
-        np.save(os.path.join(cov_dir, 'cov_snac.npy'), cov_snac)
-        np.save(os.path.join(cov_dir, 'cov_tknc.npy'), cov_tknc)
-        np.save(os.path.join(cov_dir, 'cov_tknp.npy'), cov_tknp)
-
-
-
+        # np.save(os.path.join(cov_dir, 'xlabel.npy'), xlabel)
+        # np.save(os.path.join(cov_dir, 'cov_nc1.npy'), cov_nc1)
+        # np.save(os.path.join(cov_dir, 'cov_nc2.npy'), cov_nc2)
+        # np.save(os.path.join(cov_dir, 'cov_kmnc.npy'), cov_kmnc)
+        # np.save(os.path.join(cov_dir, 'cov_nbc.npy'), cov_nbc)
+        # np.save(os.path.join(cov_dir, 'cov_snac.npy'), cov_snac)
+        # np.save(os.path.join(cov_dir, 'cov_tknc.npy'), cov_tknc)
+        # np.save(os.path.join(cov_dir, 'cov_tknp.npy'), cov_tknp)

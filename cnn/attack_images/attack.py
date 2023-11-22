@@ -16,10 +16,12 @@ import warnings
 from PIL import Image
 
 warnings.filterwarnings("ignore", message=r"Passing", category=FutureWarning)
-
-import tensorflow.keras as keras
-from tensorflow.keras import backend as K
+import keras
+# import tensorflow.keras as keras
+from keras import backend as K
+# from tensorflow.keras import backend as K
 ## load mine trained model
+import tensorflow as tf
 from tensorflow.keras.models import load_model
 
 import art
@@ -36,8 +38,6 @@ from art.attacks.evasion import SquareAttack, SpatialTransformation
 from art.attacks.evasion import ShadowAttack, Wasserstein
 
 
-
-import tensorflow as tf
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 tf.compat.v1.enable_eager_execution()
 
