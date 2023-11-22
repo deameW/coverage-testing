@@ -261,16 +261,7 @@ def gen_adv_data(model, x, y, attack_name, dataset_name, batch_size=2048):
     return adv_x
 
 
-
-# the data is in range(-.5, .5)
-def load_data(dataset_name):
-    print(DATA_DIR + dataset_name + '/benign/x_train.npy')
-    assert dataset_name in DATASET_NAMES
-    x_train = np.load(DATA_DIR + dataset_name + '/benign/x_train.npy',allow_pickle=True,fix_imports=True,encoding='latin1')
-    y_train = np.load(DATA_DIR + dataset_name + '/benign/y_train.npy',allow_pickle=True,fix_imports=True,encoding='latin1')
-    x_test = np.load(DATA_DIR + dataset_name + '/benign/x_test.npy',allow_pickle=True,fix_imports=True,encoding='latin1')
-    y_test = np.load(DATA_DIR + dataset_name + '/benign/y_test.npy',allow_pickle=True,fix_imports=True,encoding='latin1')
-
+def reshapeJsDataset(x_train):
     # 创建一个空列表来存储调整大小后的图像
     x_train_resized = []
 
@@ -282,39 +273,30 @@ def load_data(dataset_name):
     for image in x_train:
         # 创建一个 Pillow 图像对象
         pil_image = Image.fromarray(image)
-
         # 调整图像大小
         pil_image = pil_image.resize((new_width, new_height))
-
         # 将 Pillow 图像对象转换为 NumPy 数组
         resized_image = np.array(pil_image)
-
         # 将调整大小后的图像添加到列表
         x_train_resized.append(resized_image)
 
     # 将列表转换为 NumPy 数组
     x_train_resized = np.array(x_train_resized)
+    x_train = x_train_resized / 255.0
+    return x_train# the data is in range(-.5, .5)
+def load_data(dataset_name):
+    print(DATA_DIR + dataset_name + '/benign/x_train.npy')
+    assert dataset_name in DATASET_NAMES
+    x_train = np.load(DATA_DIR + dataset_name + '/benign/x_train.npy',allow_pickle=True,fix_imports=True,encoding='latin1')
+    y_train = np.load(DATA_DIR + dataset_name + '/benign/y_train.npy',allow_pickle=True,fix_imports=True,encoding='latin1')
+    x_test = np.load(DATA_DIR + dataset_name + '/benign/x_test.npy',allow_pickle=True,fix_imports=True,encoding='latin1')
+    y_test = np.load(DATA_DIR + dataset_name + '/benign/y_test.npy',allow_pickle=True,fix_imports=True,encoding='latin1')
 
-    x_test_resized = []
-    for image in x_test:
-        # 创建一个 Pillow 图像对象
-        pil_image = Image.fromarray(image)
+    if dataset_name == "js":
+        x_train = reshapeJsDataset(x_train)
+        x_test = reshapeJsDataset(x_test)
 
-        # 调整图像大小
-        pil_image = pil_image.resize((new_width, new_height))
-
-        # 将 Pillow 图像对象转换为 NumPy 数组
-        resized_image = np.array(pil_image)
-
-        # 将调整大小后的图像添加到列表
-        x_test_resized.append(resized_image)
-
-    # 将列表转换为 NumPy 数组
-    x_test_resized = np.array(x_test_resized)
-
-    return x_train_resized, y_train, x_test_resized, y_test
-
-
+    return x_train, y_train,x_test,y_test
 def softmax(x):
     exp_x = np.exp(x)
     return exp_x / np.sum(exp_x)
@@ -333,11 +315,11 @@ def accuracy(model, x, labels):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Attack for DNN')
     parser.add_argument(
-        '--dataset', help="Model Architecture", type=str, default="js")
+        '--dataset', help="Model Architecture", type=str, default="cifar")
     parser.add_argument(
-        '--model', help="Model Architecture", type=str, default="lenet5_js")
+        '--model', help="Model Architecture", type=str, default="resnet20")
     parser.add_argument(
-        '--attack', help="Adversarial examples", type=str, default="cw")
+        '--attack', help="Adversarial examples", type=str, default="fgsm")
     parser.add_argument(
         '--batch_size', help="batch size for generating adversarial examples", type=int, default=1024)
 

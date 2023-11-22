@@ -12,6 +12,9 @@ import pytz
 import numpy as np
 
 import warnings
+
+from neuron_coverage_cnn.train_models import ModelTrainer
+
 warnings.filterwarnings("ignore", message=r"Passing", category=FutureWarning)
 
 
@@ -66,17 +69,20 @@ if __name__ == '__main__':
     
     parser = argparse.ArgumentParser(description='Attack for CNN')
     parser.add_argument(
-        '--dataset', help="Model Architecture", type=str, default="mnist")
+        '--dataset', help="Model Architecture", type=str, default="js")
     parser.add_argument(
         '--model', help="Model Architecture", type=str, default="lenet5")
     parser.add_argument(
         '--attack', help="Adversarial examples", type=str, default="fgsm")
+    parser.add_argument(
+        '--mode', help="Adversarial examples", type=str, default="test")
     
     args = parser.parse_args()
 
     dataset_name = args.dataset
     model_name = args.model
     attack_name = args.attack
+    mode = args.mode
 
     ## Prepare directory for loading adversarial images and logging
     adv_dir = "{}{}/adv/{}/{}/".format(
@@ -99,6 +105,12 @@ if __name__ == '__main__':
 
     ## Load benign images from mnist, cifar, or svhn
     x_train, y_train, x_test, y_test = load_data(dataset_name)
+
+    # Train model
+    if mode == 'train':
+        trainer = ModelTrainer(model_name="lenet5", input_shape=(28, 28, 1), num_classes=10, dataset_name='mnist')
+        trainer.train_model(x_train, y_train, x_test, y_test, epochs=10, batch_size=64)
+
 
     if dataset_name == 'js':
         # 指定新的高度和宽度
@@ -184,6 +196,10 @@ if __name__ == '__main__':
             kmnc, nbc, snac, _, _, _, _ = coverage.KMNC(l)
             tknc, _, _ = coverage.TKNC(l)
             tknp = coverage.TKNP(l)
+            gd = coverage.GD(l, 1024)
+            ncd = coverage.NCD()
+            std = coverage.STD()
+
 
             f.write("\n------------------------------------------------------------------------------\n")
             f.write('x: {}   \n'.format(i))
@@ -195,6 +211,20 @@ if __name__ == '__main__':
             f.write('NBC: {}  \n'.format(nbc))
             f.write('SNAC: {} \n'.format(snac))
 
+            # model-wise metrics
+            f.write('GD: {} \n'.format(gd))
+
+            if type(ncd) == float('nan'):
+                f.write('NCD: {} \n'.format("0"))
+            else:
+                f.write('NCD: {} \n'.format(ncd))
+
+            if type(std) == float('nan'):
+                f.write('STD: {} \n'.format("0"))
+            else:
+                f.write('STD: {} \n'.format(std))
+
+            # coverage result
             xlabel.append(i)
             cov_nc1.append(nc1)
             cov_nc2.append(nc2)

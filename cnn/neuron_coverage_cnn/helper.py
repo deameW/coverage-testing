@@ -1,8 +1,10 @@
+import zlib
 
 import numpy as np
 from keras import backend as K
-
-
+from keras_applications.densenet import preprocess_input
+from sklearn.preprocessing import StandardScaler
+from tensorflow.python.keras import Model
 
 DATA_DIR = "../data/"
 MODEL_DIR = "../models/"
@@ -48,6 +50,17 @@ def load_data(dataset_name):
     return x_train, y_train, x_test, y_test
 
 
+def calculate_geometric_diversity(original_outputs, adv_outputs):
+    total_geometric_diversity = 0.0
+    neuron_num = 0
+
+    combined_outputs = np.concatenate([original_outputs, adv_outputs], axis=0)
+    distances = np.linalg.norm(combined_outputs - np.mean(combined_outputs, axis=0), axis=1)
+    total_geometric_diversity = np.mean(distances)
+    neuron_num = np.prod(original_outputs.shape[1:])
+    geometric_diversity = total_geometric_diversity / neuron_num
+
+    return geometric_diversity
 
 
 class Coverage:
@@ -231,6 +244,87 @@ class Coverage:
         pattern_num = len(pattern_set)
         print('TKNP:\t{:.3f}'.format(pattern_num))
         return pattern_num
+
+    # 5 geometric diversity
+    def GD(self, layers, batch=1024):
+        pattern_num = 0
+        data_num = self.x_adv.shape[0]
+        for i in layers:
+            pattern_set = set()
+            begin, end = 0, batch
+            original_outputs = []
+
+            while begin < self.x_train.shape[0]:
+                original_outputs.append(get_layer_i_output(self.model, i, self.x_train[begin:end]))
+                begin += batch
+                end += batch
+
+            original_outputs_concatenated = np.concatenate(original_outputs, axis=0)
+
+            begin, end = 0, batch
+            while begin < data_num:
+                adv_outputs = get_layer_i_output(self.model, i, self.x_adv[begin:end])
+                geometric_diversity = calculate_geometric_diversity(original_outputs_concatenated, adv_outputs)
+                pattern_set.add(geometric_diversity)
+                begin += batch
+                end += batch
+
+            pattern_num += len(pattern_set)
+        print('GD:\t{:.3f}'.format(pattern_num))
+        return pattern_num
+
+    def NCD(self):
+        ncd_values = []
+        data_size = self.x_adv.shape[0]
+
+        for i in range(data_size):
+            compressed_data_adv = zlib.compress(self.x_adv[i].tobytes())
+
+            for j in range(i + 1, data_size):
+                compressed_data_other = zlib.compress(self.x_adv[j].tobytes())
+
+                len_compressed_data_adv = len(compressed_data_adv)
+                len_compressed_data_other = len(compressed_data_other)
+
+                concatenated_data = np.concatenate([self.x_adv[i], self.x_adv[j]])
+                compressed_concatenated_data = zlib.compress(concatenated_data.tobytes())
+                len_compressed_concatenated_data = len(compressed_concatenated_data)
+
+                ncd_value = (len_compressed_concatenated_data - min(len_compressed_data_adv,
+                                                                    len_compressed_data_other)) / max(
+                    len_compressed_data_adv, len_compressed_data_other)
+                ncd_values.append(ncd_value)
+
+        print('NCD:\t{:.3f}'.format(np.mean(ncd_values)))
+        return np.mean(ncd_values)
+
+    def extract_features(self, input_data):
+        print(self.model.layers[-2])
+        # 创建用于提取特征的中间层模型
+        last_dense_index = len(self.model.layers) - 2
+        intermediate_layer_model = Model(inputs=self.model.input, outputs=self.model.layers[last_dense_index].output)
+
+        # 使用中间层模型提取特征
+        features = intermediate_layer_model.predict(input_data)
+
+        return features
+
+    def STD(self):
+        # 提取特征并形成特征矩阵
+        x_adv_features = self.extract_features(self.x_adv)
+
+        # 标准化特征矩阵
+        scaler = StandardScaler()
+        x_adv_features_scaled = scaler.fit_transform(x_adv_features)
+
+        # 计算特征矩阵的标准差
+        feature_std = np.std(x_adv_features_scaled, axis=0)
+
+        # 计算标准差的范数
+        std_norm = np.linalg.norm(feature_std)
+
+        print('STD:\t{:.3f}'.format(std_norm))
+        return std_norm
 
     def all(self, layers, batch=100):
         self.NC(layers, batch=batch)
