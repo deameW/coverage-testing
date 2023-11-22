@@ -69,10 +69,7 @@ if __name__ == '__main__':
     
     parser = argparse.ArgumentParser(description='Attack for CNN')
     parser.add_argument(
-        # '--dataset', help="Model Architecture", type=str, default="mnist")
         '--dataset', help="Model Architecture", type=str, default="js")
-        # '--dataset', help="Model Architecture", type=str, default="mnist")
-        # '--dataset', help="Model Architecture", type=str, default="mnist")
     parser.add_argument(
         '--model', help="Model Architecture", type=str, default="lenet5")
     parser.add_argument(
@@ -191,9 +188,9 @@ if __name__ == '__main__':
             kmnc, nbc, snac, _, _, _, _ = coverage.KMNC(l)
             tknc, _, _ = coverage.TKNC(l)
             tknp = coverage.TKNP(l)
-            # gd = coverage.GD(l, 1024)
-            # ncd = coverage.NCD()
-            # std = coverage.STD()
+            gd = coverage.GD(l, 1024)
+            ncd = coverage.NCD()
+            std = coverage.STD()
 
 
             f.write("\n------------------------------------------------------------------------------\n")
@@ -205,8 +202,21 @@ if __name__ == '__main__':
             f.write('KMNC: {} \n'.format(kmnc))
             f.write('NBC: {}  \n'.format(nbc))
             f.write('SNAC: {} \n'.format(snac))
-            # f.write('GD: {} \n'.format(gd))
 
+            # model-wise metrics
+            f.write('GD: {} \n'.format(gd))
+
+            if type(ncd) == float('nan'):
+                f.write('NCD: {} \n'.format("0"))
+            else:
+                f.write('NCD: {} \n'.format(ncd))
+
+            if type(std) == float('nan'):
+                f.write('STD: {} \n'.format("0"))
+            else:
+                f.write('STD: {} \n'.format(std))
+
+            # coverage result
             xlabel.append(i)
             cov_nc1.append(nc1)
             cov_nc2.append(nc2)
