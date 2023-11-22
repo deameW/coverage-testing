@@ -13,14 +13,14 @@ import numpy as np
 
 import warnings
 
-from neuron_coverage_cnn.train_models import ModelTrainer
+# from neuron_coverage_cnn.train_models import ModelTrainer
 
 warnings.filterwarnings("ignore", message=r"Passing", category=FutureWarning)
 
 
 import numpy as np
 from PIL import Image, ImageFilter
-from skimage.measure import compare_ssim as SSIM
+# from skimage.measure import compare_ssim as SSIM
 import keras
 from keras.models import load_model
 from tensorflow import keras
@@ -74,15 +74,12 @@ if __name__ == '__main__':
         '--model', help="Model Architecture", type=str, default="lenet5")
     parser.add_argument(
         '--attack', help="Adversarial examples", type=str, default="fgsm")
-    parser.add_argument(
-        '--mode', help="Adversarial examples", type=str, default="test")
     
     args = parser.parse_args()
 
     dataset_name = args.dataset
     model_name = args.model
     attack_name = args.attack
-    mode = args.mode
 
     ## Prepare directory for loading adversarial images and logging
     adv_dir = "{}{}/adv/{}/{}/".format(
@@ -105,11 +102,6 @@ if __name__ == '__main__':
 
     ## Load benign images from mnist, cifar, or svhn
     x_train, y_train, x_test, y_test = load_data(dataset_name)
-
-    # Train model
-    if mode == 'train':
-        trainer = ModelTrainer(model_name="lenet5", input_shape=(28, 28, 1), num_classes=10, dataset_name='mnist')
-        trainer.train_model(x_train, y_train, x_test, y_test, epochs=10, batch_size=64)
 
 
     if dataset_name == 'js':

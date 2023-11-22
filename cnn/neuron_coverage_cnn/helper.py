@@ -2,7 +2,6 @@ import zlib
 
 import numpy as np
 from keras import backend as K
-from keras_applications.densenet import preprocess_input
 from sklearn.preprocessing import StandardScaler
 from tensorflow.python.keras import Model
 

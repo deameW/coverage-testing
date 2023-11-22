@@ -16,10 +16,12 @@ import warnings
 from PIL import Image
 
 warnings.filterwarnings("ignore", message=r"Passing", category=FutureWarning)
-
-import tensorflow.keras as keras
-from tensorflow.keras import backend as K
+import keras
+# import tensorflow.keras as keras
+from keras import backend as K
+# from tensorflow.keras import backend as K
 ## load mine trained model
+import tensorflow as tf
 from tensorflow.keras.models import load_model
 
 import art
@@ -36,8 +38,6 @@ from art.attacks.evasion import SquareAttack, SpatialTransformation
 from art.attacks.evasion import ShadowAttack, Wasserstein
 
 
-
-import tensorflow as tf
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 tf.compat.v1.enable_eager_execution()
 
@@ -315,11 +315,11 @@ def accuracy(model, x, labels):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Attack for DNN')
     parser.add_argument(
-        '--dataset', help="Model Architecture", type=str, default="cifar")
+        '--dataset', help="Model Architecture", type=str, default="js")
     parser.add_argument(
-        '--model', help="Model Architecture", type=str, default="resnet20")
+        '--model', help="Model Architecture", type=str, default="lenet5_js")
     parser.add_argument(
-        '--attack', help="Adversarial examples", type=str, default="fgsm")
+        '--attack', help="Adversarial examples", type=str, default="cw")
     parser.add_argument(
         '--batch_size', help="batch size for generating adversarial examples", type=int, default=1024)
 
