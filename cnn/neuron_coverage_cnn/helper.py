@@ -1,3 +1,4 @@
+import hashlib
 import zlib
 
 import numpy as np
@@ -9,7 +10,6 @@ from tensorflow.python.keras import Model
 DATA_DIR = "../data/"
 MODEL_DIR = "../models/"
 RESULT_DIR = "../coverage/"
-
 
 MNIST = "mnist"
 CIFAR = "cifar"
@@ -30,10 +30,11 @@ SA = "squareattack"
 ST = "spatialtransformation"
 ATTACK_NAMES = [APGD, BIM, CW, DF, FGSM, JSMA, NF, PGD, SA, ST]
 
+
 # helper function
 def get_layer_i_output(model, i, data):
     layer_model = K.function([model.layers[0].input], [model.layers[i].output])
-    tmp=layer_model([data])
+    tmp = layer_model([data])
     ret = layer_model([data])[0]
     num = data.shape[0]
     ret = np.reshape(ret, (num, -1))
@@ -44,9 +45,9 @@ def get_layer_i_output(model, i, data):
 def load_data(dataset_name):
     assert dataset_name in DATASET_NAMES
     x_train = np.load(DATA_DIR + dataset_name + '/benign/x_train.npy', allow_pickle=True)
-    y_train = np.load(DATA_DIR + dataset_name + '/benign/y_train.npy',allow_pickle=True)
-    x_test = np.load(DATA_DIR + dataset_name + '/benign/x_test.npy',allow_pickle=True)
-    y_test = np.load(DATA_DIR + dataset_name + '/benign/y_test.npy',allow_pickle=True)
+    y_train = np.load(DATA_DIR + dataset_name + '/benign/y_train.npy', allow_pickle=True)
+    x_test = np.load(DATA_DIR + dataset_name + '/benign/x_test.npy', allow_pickle=True)
+    y_test = np.load(DATA_DIR + dataset_name + '/benign/y_test.npy', allow_pickle=True)
     return x_train, y_train, x_test, y_test
 
 
@@ -63,14 +64,24 @@ def calculate_geometric_diversity(original_outputs, adv_outputs):
     return geometric_diversity
 
 
+ROUND_NUM = 0
+
+
 class Coverage:
-    def __init__(self, model, x_train, y_train, x_test, y_test, x_adv):
+    def __init__(self, model, x_train, y_train, x_test, y_test, x_adv, run_round):
         self.model = model
         self.x_train = x_train
         self.y_train = y_train
         self.x_test = x_test
         self.y_test = y_test
         self.x_adv = x_adv
+        self.previous_result = 0  # 上一次的结果
+        self.increment = 1  # 增量
+        self.threshold = 20  # NCD阈值，可以根据具体情况调整
+        self.pattern_set = set()
+        self.testing_result = []
+        self.nc_results = []  # 存储每次调用 NC 函数的结果
+        self.run_round = run_round
 
     # find scale factors and min num
     def scale(self, layers, batch=1024):
@@ -174,7 +185,7 @@ class Coverage:
             'NBC:\t{:.3f} l_covered_num:\t{}'.format((l_covered_num + u_covered_num) / (neuron_num * 2), l_covered_num))
         print('SNAC:\t{:.3f} u_covered_num:\t{}'.format(u_covered_num / neuron_num, u_covered_num))
         return covered_num / (neuron_num * k), (l_covered_num + u_covered_num) / (
-                    neuron_num * 2), u_covered_num / neuron_num, covered_num, l_covered_num, u_covered_num, neuron_num * k
+                neuron_num * 2), u_covered_num / neuron_num, covered_num, l_covered_num, u_covered_num, neuron_num * k
 
     # 3 top-k neuron coverage
     def TKNC(self, layers, k=2, batch=1024):
@@ -247,10 +258,9 @@ class Coverage:
 
     # 5 geometric diversity
     def GD(self, layers, batch=1024):
-        pattern_num = 0
         data_num = self.x_adv.shape[0]
+
         for i in layers:
-            pattern_set = set()
             begin, end = 0, batch
             original_outputs = []
 
@@ -265,38 +275,35 @@ class Coverage:
             while begin < data_num:
                 adv_outputs = get_layer_i_output(self.model, i, self.x_adv[begin:end])
                 geometric_diversity = calculate_geometric_diversity(original_outputs_concatenated, adv_outputs)
-                pattern_set.add(geometric_diversity)
+                self.pattern_set.add(geometric_diversity)
                 begin += batch
                 end += batch
 
-            pattern_num += len(pattern_set)
+        if self.run_round == 0:
+            print('GD:\t{:.3f}'.format(0))
+            return 0
+
+        pattern_num = len(self.pattern_set)
         print('GD:\t{:.3f}'.format(pattern_num))
+        # 存储结果到 testing_result
         return pattern_num
 
     def NCD(self):
-        ncd_values = []
-        data_size = self.x_adv.shape[0]
+        train_size = self.x_train.shape[0]
+        adv_size = self.x_adv.shape[0]
+        current_result = self.previous_result
 
-        for i in range(data_size):
-            compressed_data_adv = zlib.compress(self.x_adv[i].tobytes())
+        for i in range(train_size):
+            for j in range(adv_size):
+                distance = np.linalg.norm(self.x_train[i] - self.x_adv[j])
 
-            for j in range(i + 1, data_size):
-                compressed_data_other = zlib.compress(self.x_adv[j].tobytes())
+                # Check if the distance is below the threshold
+                if distance < self.threshold:
+                    current_result += self.increment
 
-                len_compressed_data_adv = len(compressed_data_adv)
-                len_compressed_data_other = len(compressed_data_other)
-
-                concatenated_data = np.concatenate([self.x_adv[i], self.x_adv[j]])
-                compressed_concatenated_data = zlib.compress(concatenated_data.tobytes())
-                len_compressed_concatenated_data = len(compressed_concatenated_data)
-
-                ncd_value = (len_compressed_concatenated_data - min(len_compressed_data_adv,
-                                                                    len_compressed_data_other)) / max(
-                    len_compressed_data_adv, len_compressed_data_other)
-                ncd_values.append(ncd_value)
-
-        print('NCD:\t{:.3f}'.format(np.mean(ncd_values)))
-        return np.mean(ncd_values)
+        print('NCD:\t{}'.format(current_result))
+        self.previous_result = current_result
+        return current_result
 
     def extract_features(self, input_data):
         print(self.model.layers[-2])

@@ -186,11 +186,12 @@ if __name__ == '__main__':
 
     cov_result_path = os.path.join("./", "coverage_result_bak.txt")
     with open(cov_result_path, "w+") as f:
+        run_round = 0
         for i in range(1, len(x_adv), 200):
             if i == 1000 or i == 3000 or i == 5000 or i == 7000 or i == 9000:
                 print(i)
 
-            coverage = Coverage(model, x_train, y_train, x_test, y_test, x_adv[:i])
+            coverage = Coverage(model, x_train, y_train, x_test, y_test, x_adv[:i], run_round)
             nc1, _, _ = coverage.NC(l, threshold=0.3)
             nc2, _, _ = coverage.NC(l, threshold=0.5)
             kmnc, nbc, snac, _, _, _, _ = coverage.KMNC(l)
@@ -199,7 +200,6 @@ if __name__ == '__main__':
             gd = coverage.GD(l, 1024)
             ncd = coverage.NCD()
             std = coverage.STD()
-
 
             f.write("\n------------------------------------------------------------------------------\n")
             f.write('x: {}   \n'.format(i))
@@ -223,6 +223,8 @@ if __name__ == '__main__':
                 f.write('STD: {} \n'.format("0"))
             else:
                 f.write('STD: {} \n'.format(std))
+
+            run_round += 1
 
             # coverage result
             xlabel.append(i)
