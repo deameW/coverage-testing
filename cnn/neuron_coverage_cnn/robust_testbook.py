@@ -116,6 +116,8 @@ if __name__ == '__main__':
     # 创建一个新模型，以倒数第二层的输出为输出
     second_model = tf.keras.Model(inputs=model.input, outputs=model.layers[-2].output)
     k = len(y_train[0]) # class of the training data
+    if dataset_name == "cifar":
+        k = 10
     robust_result_path = os.path.join("./", "robust_result_bak.txt")
     with open(robust_result_path, "w+") as f:
         for data in (x_test, x_adv):
